@@ -1,0 +1,69 @@
+version: "3.1"
+services:
+  mongo-db:
+    image: mongo:3.6
+    hostname: mongo-db
+    container_name: db-mongo
+    expose:
+      - "27017"
+    ports:
+      - "27017:27017"
+    networks:
+      - default
+    command: --bind_ip_all --smallfiles
+    volumes:
+      - mongo-db:/data
+
+  orion:
+    image: fiware/orion
+    hostname: orion
+    container_name: fiware-orion
+    depends_on:
+      - mongo-db
+    networks:
+      - default
+    expose:
+      - "1026"
+    ports:
+      - "1026:1026"
+    command: -dbhost mongo-db -logLevel DEBUG
+
+  tutorial:
+    image: fiware/tutorials.context-provider
+    hostname: context-provider
+    container_name: fiware-tutorial
+    depends_on:
+      - orion
+    networks:
+      default:
+        aliases:
+          - iot-sensors
+          - context-provider
+          - tutorial
+    expose:
+      - "3000"
+      - "3001"
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      - "DEBUG=tutorial:*"
+      - "WEB_APP_PORT=3000" # Port used by the content provider proxy and web-app for viewing data
+      - "IOTA_HTTP_HOST=iot-agent"
+      - "IOTA_HTTP_PORT=7896"
+      - "DUMMY_DEVICES_PORT=3001" # Port used by the dummy IOT devices to receive commands
+      - "DUMMY_DEVICES_TRANSPORT=HTTP" # Default transport used by dummy Io devices
+      - "DUMMY_DEVICES_API_KEY=4jggokgpepnvsb2uv4s40d59ov"
+      - "CONTEXT_BROKER=http://orion:1026/v2" # URL of the context broker to update context
+      - "OPENWEATHERMAP_KEY_ID=<ADD_YOUR_KEY_ID>"
+      - "TWITTER_CONSUMER_KEY=<ADD_YOUR_CONSUMER_KEY>"
+      - "TWITTER_CONSUMER_SECRET=<ADD_YOUR_CONSUMER_SECRET>"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.18.1.0/24
+
+volumes:
+  mongo-db:
